@@ -137,14 +137,53 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // --- ATLANTA 808 SATURATION START ---
-    float drive = 4.5f;   // This pushes the 808 hard
-    float ceiling = 0.7f; // This keeps it from peaking in FL
+    #include "PluginProcessor.h"
+#include <cmath>
+
+// Fixes the Red X - Clean Atlanta Saturation
+void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
+{
+    juce::ignoreUnused (midiMessages);
+    juce::ScopedNoDenormals noDenormals;
+    auto totalNumInputChannels  = getTotalNumInputChannels();
+    auto totalNumOutputChannels = getTotalNumOutputChannels();
+
+    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
+        buffer.clear (i, 0, buffer.getNumSamples());
+
+    float drive = 4.5f; 
+    float ceiling = 0.7f; 
 
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         auto* channelData = buffer.getWritePointer (channel);
 
+        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+        {
+            float input = channelData[sample] * drive;
+            channelData[sample] = std::tanh(input) * ceiling;
+        }
+    }
+}
+
+// These are required by the factory to stay empty but present
+juce::AudioProcessorEditor* PluginProcessor::createEditor() { return nullptr; }
+bool PluginProcessor::hasEditor() const { return false; }
+const juce::String PluginProcessor::getName() const { return "Roll Anotha One"; }
+bool PluginProcessor::acceptsMidi() const { return false; }
+bool PluginProcessor::producesMidi() const { return false; }
+bool PluginProcessor::isMidiEffect() const { return false; }
+double PluginProcessor::getTailLengthSeconds() const { return 0.0; }
+int PluginProcessor::getNumPrograms() { return 1; }
+int PluginProcessor::getCurrentProgram() { return 0; }
+void PluginProcessor::setCurrentProgram (int index) { juce::ignoreUnused (index); }
+const juce::String PluginProcessor::getProgramName (int index) { juce::ignoreUnused (index); return {}; }
+void PluginProcessor::changeProgramName (int index, const juce::String& newName) { juce::ignoreUnused (index, newName); }
+void PluginProcessor::getStateInformation (juce::MemoryBlock& destData) { juce::ignoreUnused (destData); }
+void PluginProcessor::setStateInformation (const void* data, int sizeInBytes) { juce::ignoreUnused (data, sizeInBytes); }
+void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock) { juce::ignoreUnused (sampleRate, samplesPerBlock); }
+void PluginProcessor::releaseResources() {}
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new PluginProcessor(); }
         for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
         {
             // The tanh math creates that soft-clipping 'knock'
